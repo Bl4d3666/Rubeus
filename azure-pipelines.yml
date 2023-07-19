@@ -31,27 +31,28 @@ steps:
 - task: UsePythonVersion@0
   displayName: 'Use Python 3.x'
 
-- powershell: |
-   # Get InvisibilityCloak
-   wget https://raw.githubusercontent.com/h4wkst3r/InvisibilityCloak/main/InvisibilityCloak.py -o InvisibilityCloak.py
-   
-   # Install python Module
-   pip3 install requests
-   
-   #Get Tools Name
-   $ToolName = Get-ChildItem -Filter *.csproj -Recurse
-   $ToolName.Name.Split('.')[0]       
-   
-   #Get name Word
-   $r = Invoke-WebRequest -Uri "https://www.mit.edu/~ecprice/wordlist.10000"
-   [System.Collections.ArrayList]$ArrayList = $r.Content.Split("`n")
-   
-   $RandomNumber1 = Get-Random -Maximum  $ArrayList.Count
-   $RandomWord = $ArrayList[$RandomNumber1]
-   $RandomWord    
-   
-    python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
+- task: PowerShell@2
   displayName: 'Run InvisibilityCloak'
+  inputs:
+    targetType: 'inline'
+    script: |
+      # Get InvisibilityCloak
+      wget https://raw.githubusercontent.com/h4wkst3r/InvisibilityCloak/main/InvisibilityCloak.py -o InvisibilityCloak.py
+      
+      # Install python Module
+      pip3 install requests
+      
+      #Get Tools Name
+      $ToolName = Get-ChildItem -Filter *.csproj -Recurse
+      
+      #Get name Word
+      $r = Invoke-WebRequest -Uri "https://www.mit.edu/~ecprice/wordlist.10000"
+      [System.Collections.ArrayList]$ArrayList = $r.Content.Split("`n")
+      
+      $RandomNumber1 = Get-Random -Maximum  $ArrayList.Count
+      $RandomWord = $ArrayList[$RandomNumber1]
+      
+      python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
 
 - task: CopyFiles@2
   displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
@@ -105,7 +106,7 @@ steps:
       "@
       
       echo $confuserConf | Set-Content -path conf.crproj
-      .\ConfuserEx-CLI\Confuser.CLI.exe .\conf.crproj -n  $exePath
+      .\ConfuserEx-CLI\Confuser.CLI.exe .\conf.crproj -n
 
 - task: PowerShell@2
   displayName: 'Move data to Deta'
