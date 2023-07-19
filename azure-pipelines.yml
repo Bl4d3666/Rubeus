@@ -7,7 +7,7 @@ trigger:
 - master
 
 pool:
-  vmImage: 'windows-2019'
+  vmImage: 'windows-2022'
 
 variables:
   solution: '**/*.sln'
@@ -53,10 +53,6 @@ steps:
     python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
   displayName: 'Run InvisibilityCloak'
 
-- task: UseDotNet@2
-  inputs:
-    packageType: sdk
-    version: 4.x
 - task: DotNetCoreCLI@2
   inputs:
     command: 'build'
