@@ -183,6 +183,5 @@ steps:
           $JsonData = @{"ToolName"= "$($NewName.Split(':')[0])"; "NewName"= "$($NewName.Split(':')[1])";"Folder"="$($FolderName)";"DefenderChecks"="$($Checks)";"DefenderOutput"="$("$output")"}
           $jsonBase.Add("item",$JsonData)
           
-          $Baserequest = Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST 
-          $Baserequest.status
+          #Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST
       }
