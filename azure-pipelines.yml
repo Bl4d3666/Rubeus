@@ -53,11 +53,6 @@ steps:
     python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
   displayName: 'Run InvisibilityCloak'
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'build'
-    projects: '**/*.cspro'
-
 - task: CopyFiles@2
   displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
   inputs:
