@@ -51,23 +51,12 @@ steps:
    $RandomWord    
    
     python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
-   
-   
   displayName: 'Run InvisibilityCloak'
 
-- task: VSBuild@1
-  displayName: 'Build solution **\*.sln'
+- task: DotNetCoreCLI@2
   inputs:
-    solution: '$(Parameters.solution)'
-    platform: '$(BuildPlatform)'
-    configuration: '$(BuildConfiguration)'
-
-- task: PublishSymbols@2
-  displayName: 'Publish symbols path'
-  inputs:
-    SearchPattern: '**\bin\**\*.pdb'
-    PublishSymbols: false
-  continueOnError: true
+    command: 'build'
+    projects: '**/*.cspro'
 
 - task: CopyFiles@2
   displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
