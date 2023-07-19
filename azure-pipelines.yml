@@ -185,7 +185,6 @@ steps:
           
           Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST
       }
-    Write-Host "Using the mapped env var for this task works and is recommended: $env:MY_MAPPED_ENV_VAR"
   env:
     BaseProjectKey: $(BaseProjectKey) # the recommended way to map to an env variable
     BASEHEADERSAPI: $(BASEHEADERSAPI)
