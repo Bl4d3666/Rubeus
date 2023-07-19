@@ -1,0 +1,199 @@
+# ASP.NET
+# Build and test ASP.NET projects.
+# Add steps that publish symbols, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
+
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-2019'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: UsePythonVersion@0
+  displayName: 'Use Python 3.x'
+
+- powershell: |
+   # Get InvisibilityCloak
+   wget https://raw.githubusercontent.com/h4wkst3r/InvisibilityCloak/main/InvisibilityCloak.py -o InvisibilityCloak.py
+   
+   # Install python Module
+   pip3 install requests
+   
+   #Get Tools Name
+   $ToolName = Get-ChildItem -Filter *.csproj -Recurse
+   $ToolName.Name.Split('.')[0]       
+   
+   #Get name Word
+   $r = Invoke-WebRequest -Uri "https://www.mit.edu/~ecprice/wordlist.10000"
+   [System.Collections.ArrayList]$ArrayList = $r.Content.Split("`n")
+   
+   $RandomNumber1 = Get-Random -Maximum  $ArrayList.Count
+   $RandomWord = $ArrayList[$RandomNumber1]
+   $RandomWord    
+   
+    python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
+   
+   
+  displayName: 'Run InvisibilityCloak'
+
+- task: VSBuild@1
+  displayName: 'Build solution **\*.sln'
+  inputs:
+    solution: '$(Parameters.solution)'
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+
+- task: PublishSymbols@2
+  displayName: 'Publish symbols path'
+  inputs:
+    SearchPattern: '**\bin\**\*.pdb'
+    PublishSymbols: false
+  continueOnError: true
+
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    SourceFolder: '$(system.defaultworkingdirectory)'
+    Contents: '**\bin\$(BuildConfiguration)\**'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: Rubeus'
+  inputs:
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+    ArtifactName: Rubeus
+  condition: succeededOrFailed()
+
+- powershell: |
+   # download specific ConfuserEx version
+   wget https://github.com/mkaring/ConfuserEx/releases/download/v1.6.0/ConfuserEx-CLI.zip -o ConfuserEx-CLI.zip
+   Expand-Archive .\ConfuserEx-CLI.zip
+   
+   $LEVEL = "maximum"
+   $exePath = (Get-ChildItem -Path $(system.defaultworkingdirectory) -Include '*.exe' -Recurse | Where-Object {$_.DirectoryName -match 'release' -and $_.DirectoryName -match 'bin' } ).FullName
+   
+   $baseDir = Split-Path $exePath -Parent
+   
+   $confuserConf = 
+   @"
+   <project outputDir="$(build.artifactstagingdirectory)\Confused" baseDir="$baseDir" xmlns="http://www.google.com">
+       <module path="$exePath" >
+           <rule pattern="true" preset="$LEVEL" inherit="false">
+               <protection id="anti ildasm" />
+               <protection id="anti debug" action="remove" /> <!-- this breaks Assembly.Load. Maybe just use donut?  -->
+               <protection id="anti dump" action="remove" /> <!-- this breaks sharphound --> 
+               <protection id="anti tamper" action="remove" /> <!-- this breaks Assembly.Load. Maybe just use donut?  -->
+               <protection id="invalid metadata" />
+               <protection id="resources" action="remove" /> <!-- this breaks sharphound --> 
+               <protection id="constants" />
+               <protection id="ref proxy" />
+               <protection id="ctrl flow" />
+               <protection id="typescramble" action="remove" />
+               <protection id="rename" action="remove" /> <!-- This just killed seatbelt for some reason --> 
+               <protection id="watermark" action="remove" />
+           </rule>
+       </module>
+   </project>
+   "@
+   
+   echo $confuserConf | Set-Content -path conf.crproj
+   
+   .\ConfuserEx-CLI\Confuser.CLI.exe .\conf.crproj -n
+   
+  displayName: 'Run ConfuserEx'
+
+- powershell: |
+   # download specific ThreatCheck version
+   wget https://github.com/Bl4d3666/ThreatCheck/releases/download/Latest/ThreatCheck.exe -o ThreatCheck.exe
+   wget https://github.com/Bl4d3666/ThreatCheck/releases/download/Latest/CommandLine.dll -o CommandLine.dll
+   
+   $exePath = (Get-ChildItem -Path $(system.defaultworkingdirectory) -Include '*.exe' -Recurse | Where-Object {$_.DirectoryName -match 'release' -and $_.DirectoryName -match 'bin' } ).FullName
+   $Files = Get-ChildItem -Filter *.exe -Path $(build.artifactstagingdirectory)\Confused -Recurse  
+   $Date = Get-Date -Format ddMMyyyy
+   $FolderName = $Date +"-Obfucated"
+   $BaseURL = "https://database.deta.sh/v1/${env:BaseProjectKey}/Tools/items"
+   $jsonBase = @{}
+   
+   function Get-ProcessOutput
+   {
+       Param (
+                   [Parameter(Mandatory=$true)]$FileName,
+                   $Args
+       )
+       
+       $process = New-Object System.Diagnostics.Process
+       $process.StartInfo.UseShellExecute = $false
+       $process.StartInfo.RedirectStandardOutput = $true
+       $process.StartInfo.RedirectStandardError = $true
+       $process.StartInfo.FileName = $FileName
+       if($Args) { $process.StartInfo.Arguments = $Args }
+       $out = $process.Start()
+       
+       $StandardError = $process.StandardError.ReadToEnd()
+       $StandardOutput = $process.StandardOutput.ReadToEnd()
+       
+       $output = New-Object PSObject
+       $output | Add-Member -type NoteProperty -name StandardOutput -Value $StandardOutput
+       $output | Add-Member -type NoteProperty -name StandardError -Value $StandardError
+       return $output
+   }
+   
+   
+   $BaseHeaders = @{
+       "X-API-Key" = ${env:BASEHEADERSAPI};
+       "Content-Type" = 'application/json'    
+   }    
+   $UploadHeaders = @{
+       "X-API-Key" = '${env:UPLOADHEADERSAPI}'    
+   }
+   
+   Foreach ($File in $Files)
+   {
+       $UploadURL = "https://drive.deta.sh/v1/${env:UploadProjectKey}/Uploads/files?name=$("/"+$FolderName+"/"+$File.name)"
+       $Body = @{
+           "FileName" = Get-Content($File.FullName) -Raw
+       }
+       $Request = Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
+       $Request.status
+   }
+   
+   foreach ($NewName in [System.IO.File]::ReadLines(".\names.txt")){
+      
+       $output = Get-ProcessOutput -FileName "D:\a\1\s\ThreatCheck.exe" -Args "-f $exePath"
+       
+       if($output.StandardOutput -like "*No threat found*")
+       {
+             $Checks = "Passed"
+       }
+       else
+       {
+             $Checks = "Failed"
+       }
+   
+       $JsonData = @{"ToolName"= "$($NewName.Split(':')[0])"; "NewName"= "$($NewName.Split(':')[1])";"Folder"="$($FolderName)";"DefenderChecks"="$($Checks)";"DefenderOutput"="$("$output")"}
+       $jsonBase.Add("item",$JsonData)
+       
+       $Baserequest = Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST 
+       $Baserequest.status
+   }
+  displayName: 'Move data to Deta'
