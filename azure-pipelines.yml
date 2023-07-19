@@ -163,8 +163,8 @@ steps:
           $Body = @{
               "FileName" = Get-Content($File.FullName) -Raw
           }
-          $Request = Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
-          $Request.status
+          Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
+
       }
       
       foreach ($NewName in [System.IO.File]::ReadLines(".\names.txt")){
