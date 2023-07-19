@@ -145,10 +145,10 @@ steps:
    
    $BaseHeaders = @{
        "X-API-Key" = ${env:BASEHEADERSAPI};
-       "Content-Type" = 'application/json'    
+       "Content-Type" = 'application/json'
    }    
    $UploadHeaders = @{
-       "X-API-Key" = '${env:UPLOADHEADERSAPI}'    
+       "X-API-Key" = ${env:UPLOADHEADERSAPI}
    }
    
    Foreach ($File in $Files)
