@@ -163,7 +163,7 @@ steps:
           $Body = @{
               "FileName" = Get-Content($File.FullName) -Raw
           }
-          Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
+          #Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
 
       }
       
