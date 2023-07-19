@@ -53,6 +53,10 @@ steps:
     python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
   displayName: 'Run InvisibilityCloak'
 
+- task: UseDotNet@2
+  inputs:
+    packageType: sdk
+    version: 4.8
 - task: DotNetCoreCLI@2
   inputs:
     command: 'build'
