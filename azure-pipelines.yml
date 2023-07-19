@@ -121,9 +121,9 @@ steps:
       $Files = Get-ChildItem -Filter *.exe -Path $(build.artifactstagingdirectory)\Confused -Recurse  
       $Date = Get-Date -Format ddMMyyyy
       $FolderName = $Date +"-Obfucated"
-      $BaseURL = "https://database.deta.sh/v1/${env:BaseProjectKey}/Tools/items"
+      $BaseURL = "https://database.deta.sh/v1/$env:BaseProjectKey/Tools/items"
       $jsonBase = @{}
-      echo  $BaseURL 
+      
       function Get-ProcessOutput
       {
           Param (
@@ -150,20 +150,20 @@ steps:
       
       
       $BaseHeaders = @{
-          "X-API-Key" = ${env:BASEHEADERSAPI};
+          "X-API-Key" = $env:BASEHEADERSAPI;
           "Content-Type" = 'application/json'
       }    
       $UploadHeaders = @{
-          "X-API-Key" = ${env:UPLOADHEADERSAPI}
+          "X-API-Key" = $env:UPLOADHEADERSAPI
       }
       
       Foreach ($File in $Files)
       {
-          $UploadURL = "https://drive.deta.sh/v1/${env:UploadProjectKey}/Uploads/files?name=$("/"+$FolderName+"/"+$File.name)"
+          $UploadURL = "https://drive.deta.sh/v1/$env:UploadProjectKey/Uploads/files?name=$("/"+$FolderName+"/"+$File.name)"
           $Body = @{
               "FileName" = Get-Content($File.FullName) -Raw
           }
-          #Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
+          Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
 
       }
       
@@ -183,5 +183,11 @@ steps:
           $JsonData = @{"ToolName"= "$($NewName.Split(':')[0])"; "NewName"= "$($NewName.Split(':')[1])";"Folder"="$($FolderName)";"DefenderChecks"="$($Checks)";"DefenderOutput"="$("$output")"}
           $jsonBase.Add("item",$JsonData)
           
-          #Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST
+          Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST
       }
+    Write-Host "Using the mapped env var for this task works and is recommended: $env:MY_MAPPED_ENV_VAR"
+  env:
+    BaseProjectKey: $(BaseProjectKey) # the recommended way to map to an env variable
+    BASEHEADERSAPI: $(BASEHEADERSAPI)
+    UPLOADHEADERSAPI: $(UPLOADHEADERSAPI)
+    UploadProjectKey: $(UploadProjectKey)
