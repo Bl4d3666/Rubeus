@@ -83,7 +83,7 @@ steps:
       
       $LEVEL = "normal"
       $exePath = (Get-ChildItem -Path $(system.defaultworkingdirectory) -Include '*.exe' -Recurse | Where-Object {$_.DirectoryName -match 'release' -and $_.DirectoryName -match 'bin' } ).FullName
-      echo $exePath
+      echo $($exePath.split('\')[5])
       $baseDir = Split-Path $exePath -Parent
       
       $confuserConf = 
