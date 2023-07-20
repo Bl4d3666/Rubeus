@@ -81,7 +81,7 @@ steps:
       wget https://github.com/mkaring/ConfuserEx/releases/download/v1.6.0/ConfuserEx-CLI.zip -o ConfuserEx-CLI.zip
       Expand-Archive .\ConfuserEx-CLI.zip
       
-      $LEVEL = "normal"
+      $LEVEL = "None"
       $exePath = (Get-ChildItem -Path $(system.defaultworkingdirectory) -Include '*.exe' -Recurse | Where-Object {$_.DirectoryName -match 'release' -and $_.DirectoryName -match 'bin' } ).FullName
       echo $exePath.split('\')[7]
       $baseDir = Split-Path $exePath -Parent
@@ -91,16 +91,19 @@ steps:
       <project outputDir="$(build.artifactstagingdirectory)\Confused" baseDir="$baseDir" xmlns="http://www.google.com">
           <module path="$($exePath.split('\')[7])" >
               <rule pattern="true" preset="$LEVEL" inherit="false">
-                <protection id="anti ildasm" />
-                <protection id="anti debug" action="remove" /> <!-- this breaks Assembly.Load. Maybe just use donut?  -->
-                <protection id="anti dump" action="remove" /> <!-- this breaks sharphound --> 
-                <protection id="anti tamper" action="remove" /> <!-- this breaks Assembly.Load. Maybe just use donut?  -->
-                <protection id="invalid metadata" />
-                <protection id="resources" action="remove" /> <!-- this breaks sharphound --> 
-                <protection id="constants" />
-                <protection id="ctrl flow" />
+                <protection id="anti debug" action="remove"/>
+                <protection id="anti dump" action="remove" />
+                <protection id="anti ildasm" action="remove" />
+                <protection id="anti tamper" action="remove" />
+                <protection id="constants" action="remove" />
+                <protection id="ctrl flow" action="remove" />
+                <protection id="harden" action="remove" />
+                <protection id="invalid metadata" action="remove" />
+                <protection id="ref proxy" action="remove" />
+                <protection id="resources" action="remove" />
                 <protection id="typescramble" action="remove" />
-                <protection id="rename" action="remove" /> <!-- This just killed seatbelt for some reason --> 
+                <protection id="rename" action="remove" />
+                <protection id="watermark" action="remove" />
               </rule>
           </module>
       </project>
