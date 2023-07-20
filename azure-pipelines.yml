@@ -10,23 +10,10 @@ pool:
   vmImage: 'windows-2019'
 
 variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
+- group: DetaVariableGroup
+- group:  BuildVariablesGroup
 
 steps:
-- task: NuGetToolInstaller@1
-
-- task: NuGetCommand@2
-  inputs:
-    restoreSolution: '$(solution)'
-
-- task: VSBuild@1
-  inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)" /p:TargetFrameworkVersion=v4.5'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
 
 - task: UsePythonVersion@0
   displayName: 'Use Python 3.x'
@@ -43,8 +30,9 @@ steps:
       pip3 install requests
       
       #Get Tools Name
-      $ToolName = Get-ChildItem -Filter *.csproj -Recurse
-      
+      $GetName = Get-ChildItem -Filter *.csproj -Recurse
+      $ToolName = $GetName.Name.Split('.')[0]
+
       #Get name Word
       $r = Invoke-WebRequest -Uri "https://www.mit.edu/~ecprice/wordlist.10000"
       [System.Collections.ArrayList]$ArrayList = $r.Content.Split("`n")
@@ -52,8 +40,23 @@ steps:
       $RandomNumber1 = Get-Random -Maximum  $ArrayList.Count
       $RandomWord = $ArrayList[$RandomNumber1]
       
-      python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "Rubeus:$RandomWord" > names.txt
+      python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "$($ToolName):$($RandomWord)" > names.txt
+      echo "##vso[task.setvariable variable=ToolNamevar;]$($RandomWord)"
+      gc "names.txt"
 
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)" /p:TargetFrameworkVersion=v4.5'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+    
 - task: CopyFiles@2
   displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
   inputs:
@@ -63,10 +66,10 @@ steps:
   condition: succeededOrFailed()
 
 - task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: Rubeus'
+  displayName: 'Publish Artifact'
   inputs:
     PathtoPublish: '$(build.artifactstagingdirectory)'
-    ArtifactName: Rubeus
+    ArtifactName: "$(ToolNamevar).exe"
   condition: succeededOrFailed()
 
 - task: PowerShell@2
@@ -117,10 +120,10 @@ steps:
       wget https://github.com/Bl4d3666/ThreatCheck/releases/download/Latest/ThreatCheck.exe -o ThreatCheck.exe
       wget https://github.com/Bl4d3666/ThreatCheck/releases/download/Latest/CommandLine.dll -o CommandLine.dll
       
-      $exePath = (Get-ChildItem -Path $(system.defaultworkingdirectory) -Include '*.exe' -Recurse | Where-Object {$_.DirectoryName -match 'release' -and $_.DirectoryName -match 'bin' } ).FullName
-      $Files = Get-ChildItem -Filter *.exe -Path $(build.artifactstagingdirectory)\Confused -Recurse  
+      #$exePath = (Get-ChildItem -Path $(system.defaultworkingdirectory) -Include '*.exe' -Recurse | Where-Object {$_.DirectoryName -match 'release' -and $_.DirectoryName -match 'bin' } ).FullName
+      $Files = (Get-ChildItem -Filter *.exe -Path $(build.artifactstagingdirectory)\Confused -Recurse).FullName
       $Date = Get-Date -Format ddMMyyyy
-      $FolderName = $Date +"-Obfucated"
+      $FolderName = $Date + "-Obfucated"
       $BaseURL = "https://database.deta.sh/v1/$env:BaseProjectKey/Tools/items"
       $jsonBase = @{}
       
@@ -150,43 +153,44 @@ steps:
       
       
       $BaseHeaders = @{
-          "X-API-Key" = $env:BASEHEADERSAPI;
+          "X-API-Key" = $env:BaseHeadersAPI;
           "Content-Type" = 'application/json'
       }    
       $UploadHeaders = @{
-          "X-API-Key" = $env:UPLOADHEADERSAPI
+          "X-API-Key" = $env:UploadHeadersAPI
       }
-      
-      Foreach ($File in $Files)
+       echo "[0***] $Files"    
+      foreach ($NewName in $Files)
       {
-          $UploadURL = "https://drive.deta.sh/v1/$env:UploadProjectKey/Uploads/files?name=$("/"+$FolderName+"/"+$File.name)"
-          $Body = @{
-              "FileName" = Get-Content($File.FullName) -Raw
-          }
-          Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
+          foreach ($FileNames in [System.IO.File]::ReadLines(".\names.txt"))
+          {
+            if ($NewName.split('\')[5].Split('.')[0]  -like $FileNames.Split(':')[1])
+            {
+              $output = Get-ProcessOutput -FileName "D:\a\1\s\ThreatCheck.exe" -Args "-f $NewName"
+              if($output.StandardOutput -like "*No threat found*")
+              {
+                    $Checks = "Passed"
+              }
+              else
+              {
+                    $Checks = "Failed"
+              }
 
-      }
-      
-      foreach ($NewName in [System.IO.File]::ReadLines(".\names.txt")){
-          
-          $output = Get-ProcessOutput -FileName "D:\a\1\s\ThreatCheck.exe" -Args "-f $exePath"
-          
-          if($output.StandardOutput -like "*No threat found*")
-          {
-                $Checks = "Passed"
+              $UploadURL = "https://drive.deta.sh/v1/$env:UploadProjectKey/Uploads/files?name=$("/"+$FolderName+"/"+$($NewName.split('\')[5]))"
+              $Body = @{
+                  "FileName" = Get-Content($NewName) -Raw
+              }
+              Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
+
+              $JsonData = @{"ToolName"= "$($FileNames.Split(':')[0])"; "NewName"= "$($FileNames.Split(':')[1])";"Folder"="$($FolderName)";"DefenderChecks"="$($Checks)";"DefenderOutput"="$("$output")"}
+              $jsonBase.Add("item",$JsonData)
+              
+              Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST
+            }
           }
-          else
-          {
-                $Checks = "Failed"
-          }
-      
-          $JsonData = @{"ToolName"= "$($NewName.Split(':')[0])"; "NewName"= "$($NewName.Split(':')[1])";"Folder"="$($FolderName)";"DefenderChecks"="$($Checks)";"DefenderOutput"="$("$output")"}
-          $jsonBase.Add("item",$JsonData)
-          
-          Invoke-WebRequest -Uri $BaseURL -Headers $BaseHeaders -Body "$($jsonBase | ConvertTo-Json)" -Method POST
       }
   env:
-    BaseProjectKey: $(BaseProjectKey) # the recommended way to map to an env variable
-    BASEHEADERSAPI: $(BASEHEADERSAPI)
-    UPLOADHEADERSAPI: $(UPLOADHEADERSAPI)
+    UploadHeadersAPI: $(UploadHeadersAPI)
+    BaseHeadersAPI: $(BaseHeadersAPI)
     UploadProjectKey: $(UploadProjectKey)
+    BaseProjectKey: $(BaseProjectKey)
