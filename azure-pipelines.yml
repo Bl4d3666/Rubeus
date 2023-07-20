@@ -178,10 +178,8 @@ steps:
               }
 
               $UploadURL = "https://drive.deta.sh/v1/$env:UploadProjectKey/Uploads/files?name=$("/"+$FolderName+"/"+$($NewName.split('\')[5]))"
-              $Body = @{
-                  "FileName" = Get-Content($NewName) -Raw
-              }
-              Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Body $Body -Method POST
+
+              Invoke-WebRequest -Uri $UploadURL -Headers $UploadHeaders -Infile $NewName -Method POST
 
               $JsonData = @{"ToolName"= "$($FileNames.Split(':')[0])"; "NewName"= "$($FileNames.Split(':')[1])";"Folder"="$($FolderName)";"DefenderChecks"="$($Checks)";"DefenderOutput"="$("$output")"}
               $jsonBase.Add("item",$JsonData)
