@@ -97,7 +97,7 @@ steps:
       "@
       
       echo $confuserConf | Set-Content -path conf.crproj
-      .\ConfuserEx-CLI\Confuser.CLI.exe .\conf.crproj -n
+      #.\ConfuserEx-CLI\Confuser.CLI.exe .\conf.crproj -n
 
 - task: PowerShell@2
   displayName: 'Move data to Deta'
