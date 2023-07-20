@@ -81,7 +81,7 @@ steps:
       wget https://github.com/mkaring/ConfuserEx/releases/download/v1.6.0/ConfuserEx-CLI.zip -o ConfuserEx-CLI.zip
       Expand-Archive .\ConfuserEx-CLI.zip
       
-      $LEVEL = "normal"
+      $LEVEL = "none"
       $exePath = (Get-ChildItem -Path $(system.defaultworkingdirectory) -Include '*.exe' -Recurse | Where-Object {$_.DirectoryName -match 'release' -and $_.DirectoryName -match 'bin' } ).FullName
       
       $baseDir = Split-Path $exePath -Parent
