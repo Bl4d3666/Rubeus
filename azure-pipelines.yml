@@ -31,7 +31,7 @@ steps:
     configuration: '$(buildConfiguration)'
     
 - task: PowerShell@2
-  displayName: 'Move File to AWS'
+  displayName: 'Move File to AWS $(build.artifactstagingdirectory)'
   inputs:
     targetType: 'inline'
     script: |
