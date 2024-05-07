@@ -29,9 +29,18 @@ steps:
     msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)" /p:TargetFrameworkVersion=v4.7.2'
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
-    
+
+
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    SourceFolder: '$(system.defaultworkingdirectory)'
+    Contents: '**\bin\$(BuildConfiguration)\**'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
+  
 - task: PowerShell@2
-  displayName: 'Move File to AWS $(build.artifactstagingdirectory)'
+  displayName: 'Move File to AWS'
   inputs:
     targetType: 'inline'
     script: |
