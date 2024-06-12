@@ -3,8 +3,8 @@
 # Add steps that publish symbols, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
 
-# A pipeline with no CI trigger
-trigger: none
+trigger:
+- master
 
 pool:
   vmImage: 'windows-2019'
@@ -14,6 +14,28 @@ variables:
 - group:  BuildVariablesGroup
 
 steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '**/*.sln'
+    feedsToUse: 'select'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)" /p:TargetFrameworkVersion=v4.7.2'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+    
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    SourceFolder: '$(system.defaultworkingdirectory)'
+    Contents: '**\bin\$(BuildConfiguration)\**'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
 
 - task: UsePythonVersion@0
   displayName: 'Use Python 3.x'
@@ -42,28 +64,6 @@ steps:
       
       python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "$($ToolName):$($RandomWord)" > names.txt
       echo "##vso[task.setvariable variable=ToolNamevar;]$($RandomWord)"
-      gc "names.txt"
-
-- task: NuGetToolInstaller@1
-
-- task: NuGetCommand@2
-  inputs:
-    restoreSolution: '$(solution)'
-
-- task: VSBuild@1
-  inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)" /p:TargetFrameworkVersion=v4.5'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-    
-- task: CopyFiles@2
-  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
-  inputs:
-    SourceFolder: '$(system.defaultworkingdirectory)'
-    Contents: '**\bin\$(BuildConfiguration)\**'
-    TargetFolder: '$(build.artifactstagingdirectory)'
-  condition: succeededOrFailed()
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact'
@@ -150,30 +150,36 @@ steps:
 
       $response = Invoke-WebRequest -Uri "$env:authUrl" -Method Post -ContentType "application/json" -Body "{`"client_id`":`"$env:client_id`",`"client_secret`":`"$env:client_secret`",`"audience`":`"$env:audience`",`"grant_type`":`"client_credentials`"}"
       $JsonData = $response.Content | ConvertFrom-Json
+    
+      $oldfilename = gc D:\a\1\s\names.txt
+      $oldfilename = $oldfilename.Split(':')[0]
 
-      foreach ($File in $Files)
+      foreach ($NewName in $Files)
       {
-        Write-Host "Working on: $File"
+        Write-Host "Working on: $NewName"
+
         $boundary = [System.Guid]::NewGuid().ToString()
 
         # Get file content as bytes
-        $content = [System.Text.Encoding]::GetEncoding('iso-8859-1').GetString([System.IO.File]::ReadAllBytes($File))
+        $content = [System.Text.Encoding]::GetEncoding('iso-8859-1').GetString([System.IO.File]::ReadAllBytes($NewName))
 
         # Create the body content as a string
 
           $output = Get-ProcessOutput -FileName "D:\a\1\s\ThreatCheck.exe" -Args "-f $NewName"
             if($output.StandardOutput -like "*No threat found*")
               {
-                $Checks = "Passed"
+                $Checks = 'Passed'
               }
               else
               {
-                $Checks = "Failed"
+                $Checks = 'Failed'
               }
+
+      $output = $output.StandardOutput
 
       $body = @"
       --$boundary
-      Content-Disposition: form-data; name="file"; filename="$(Split-Path $File -leaf)"
+      Content-Disposition: form-data; name="file"; filename="$NewName"
       Content-Type: application/octet-stream
 
       $content
@@ -183,20 +189,25 @@ steps:
 
       https://dev.azure.com/someonehacking/OffensiveBuild/_apis/build/status%2Fv2%2F$(Build.DefinitionName)?branchName=azure-pipelines
       --$boundary
-      Content-Disposition:  form-data; name="tool_name"
+      Content-Disposition: form-data; name="tool_name"
       Content-Type: text/plain
 
-      $(Split-Path $File -leaf)
+      $($oldfilename).exe
       --$boundary
-      Content-Disposition:  form-data; name="DefenderChecks"
+      Content-Disposition: form-data; name="NewName"
       Content-Type: text/plain
 
-      $($Checks)
+      $(Split-Path $NewName -leaf)
       --$boundary
-      Content-Disposition:  form-data; name="DefenderOutput"
+      Content-Disposition: form-data; name="DefenderOutput"
       Content-Type: text/plain
 
-      $($Output)               
+      $($output).StandardOutput             
+      --$boundary
+      Content-Disposition: form-data; name="DefenderChecks"
+      Content-Type: text/plain
+
+      $Checks
       --$boundary--
       "@
 
