@@ -14,29 +14,6 @@ variables:
 - group:  BuildVariablesGroup
 
 steps:
-- task: NuGetToolInstaller@1
-
-- task: NuGetCommand@2
-  inputs:
-    command: 'restore'
-    restoreSolution: '**/*.sln'
-    feedsToUse: 'select'
-
-- task: VSBuild@1
-  inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)" /p:TargetFrameworkVersion=v4.7.2'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-    
-- task: CopyFiles@2
-  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
-  inputs:
-    SourceFolder: '$(system.defaultworkingdirectory)'
-    Contents: '**\bin\$(BuildConfiguration)\**'
-    TargetFolder: '$(build.artifactstagingdirectory)'
-  condition: succeededOrFailed()
-
 - task: UsePythonVersion@0
   displayName: 'Use Python 3.x'
 
@@ -62,8 +39,30 @@ steps:
       $RandomNumber1 = Get-Random -Maximum  $ArrayList.Count
       $RandomWord = $ArrayList[$RandomNumber1]
       
-      python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "$($ToolName):$($RandomWord)" > names.txt
+      python.exe .\InvisibilityCloak.py -d .\ -n $RandomWord -m reverse;  echo "$($ToolName):$($RandomWord)" > D:\a\1\s\names.txt
       echo "##vso[task.setvariable variable=ToolNamevar;]$($RandomWord)"
+      gc "D:\a\1\s\names.txt"
+
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)" /p:TargetFrameworkVersion=v4.5'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+    
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    SourceFolder: '$(system.defaultworkingdirectory)'
+    Contents: '**\bin\$(BuildConfiguration)\**'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact'
@@ -174,9 +173,9 @@ steps:
               {
                 $Checks = 'Failed'
               }
-
+      
       $output = $output.StandardOutput
-
+      
       $body = @"
       --$boundary
       Content-Disposition: form-data; name="file"; filename="$NewName"
@@ -202,7 +201,7 @@ steps:
       Content-Disposition: form-data; name="DefenderOutput"
       Content-Type: text/plain
 
-      $($output).StandardOutput             
+      $Output              
       --$boundary
       Content-Disposition: form-data; name="DefenderChecks"
       Content-Type: text/plain
